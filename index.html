@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: rgba(14, 13, 13, 0.925);
+            font-family: Arial, sans-serif;
+        }
+
+        .game-container {
+            text-align: center;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 2px solid #333;
+            margin: 20px auto;
+            box-shadow: 0 0 20px 5px red;
+    transition: box-shadow 1s;
+    animation: containerGlow 3s infinite;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+
+        
+@keyframes containerGlow {
+    0%, 100% { box-shadow: 0 0 20px red; }
+    33% { box-shadow: 0 0 20px white; }
+    66% { box-shadow: 0 0 20px purple; }
+}
+
+
+        .white {
+            background-color: #fff;
+        }
+
+        .black {
+            background-color: #769656;
+        }
+
+        .selected {
+            background-color: #baca44;
+        }
+
+        .valid-move {
+            background-color: #f7f769;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+
+
+        .developer-text {
+   
+   font-size: 28px;
+  ;
+   animation: zoom 4s infinite, colorGlow 4s infinite;
+}
+
+@keyframes zoom {
+   0%, 100% { transform: scale(1); }
+   50% { transform: scale(1.1); }
+}
+
+@keyframes colorGlow {
+   0% { color: red; text-shadow: 0 0 10px red; }
+   33% { color: white; text-shadow: 0 0 10px white; }
+   66% { color: green; text-shadow: 0 0 10px green; }
+   100% { color: red; text-shadow: 0 0 10px red; }
+}
+ 
+
+
+
+    </style>
+</head>
+<body>
+    <div class="game-container">
+      <p class="developer-text">𝑫𝒆𝒗𝒆𝒍𝒑𝒐𝒚 𝑩𝒚 𝒀𝑨𝑴𝑰</p>
+        <div class="board" id="board"></div>
+        <div class="status" id="status">White's turn</div>
+    </div>
+
+    <script>
+        class ChessGame {
+            constructor() {
+                this.board = document.getElementById('board');
+                this.statusDisplay = document.getElementById('status');
+                this.selectedCell = null;
+                this.currentPlayer = 'white';
+                this.pieces = {
+                    white: {
+                        king: '♔', queen: '♕', rook: '♖',
+                        bishop: '♗', knight: '♘', pawn: '♙'
+                    },
+                    black: {
+                        king: '♚', queen: '♛', rook: '♜',
+                        bishop: '♝', knight: '♞', pawn: '♟'
+                    }
+                };
+                this.gameState = this.initialGameState();
+                this.initializeBoard();
+            }
+
+            initialGameState() {
+                return [
+                    ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
+                    ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+                    Array(8).fill(''),
+                    Array(8).fill(''),
+                    Array(8).fill(''),
+                    Array(8).fill(''),
+                    ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+                    ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
+                ];
+            }
+
+            initializeBoard() {
+                this.board.innerHTML = '';
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = `cell ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        cell.addEventListener('click', (e) => this.handleCellClick(e));
+                        
+                        const piece = this.gameState[row][col];
+                        if (piece) {
+                            const color = piece[0] === 'w' ? 'white' : 'black';
+                            const pieceType = this.getPieceType(piece[1]);
+                            cell.textContent = this.pieces[color][pieceType];
+                        }
+                        
+                        this.board.appendChild(cell);
+                    }
+                }
+            }
+
+            getPieceType(letter) {
+                const types = {
+                    'k': 'king', 'q': 'queen', 'r': 'rook',
+                    'b': 'bishop', 'n': 'knight', 'p': 'pawn'
+                };
+                return types[letter];
+            }
+
+            handleCellClick(event) {
+                const cell = event.target;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const piece = this.gameState[row][col];
+
+                if (this.selectedCell) {
+                    const selectedRow = parseInt(this.selectedCell.dataset.row);
+                    const selectedCol = parseInt(this.selectedCell.dataset.col);
+                    const selectedPiece = this.gameState[selectedRow][selectedCol];
+
+                    if (this.isValidMove(selectedRow, selectedCol, row, col)) {
+                        this.makeMove(selectedRow, selectedCol, row, col);
+                        this.clearHighlights();
+                        this.selectedCell = null;
+                        this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
+                        this.statusDisplay.textContent = `${this.currentPlayer.charAt(0).toUpperCase() + this.currentPlayer.slice(1)}'s turn`;
+                    } else {
+                        this.clearHighlights();
+                        this.selectedCell = null;
+                    }
+                } else if (piece && piece[0] === (this.currentPlayer === 'white' ? 'w' : 'b')) {
+                    this.selectedCell = cell;
+                    cell.classList.add('selected');
+                    this.showValidMoves(row, col);
+                }
+            }
+
+            isValidMove(fromRow, fromCol, toRow, toCol) {
+                const piece = this.gameState[fromRow][fromCol];
+                const targetPiece = this.gameState[toRow][toCol];
+
+                if (targetPiece && targetPiece[0] === piece[0]) return false;
+
+                const pieceType = piece[1];
+                const direction = piece[0] === 'w' ? -1 : 1;
+
+                switch (pieceType) {
+                    case 'p': // Pawn
+                        if (fromCol === toCol && !targetPiece) {
+                            if (toRow === fromRow + direction) return true;
+                            if ((fromRow === 6 && piece[0] === 'w' || fromRow === 1 && piece[0] === 'b') &&
+                                toRow === fromRow + 2 * direction && !this.gameState[fromRow + direction][fromCol]) {
+                                return true;
+                            }
+                        }
+                        if (Math.abs(fromCol - toCol) === 1 && toRow === fromRow + direction && targetPiece) {
+                            return true;
+                        }
+                        return false;
+
+                    case 'r': // Rook
+                        return this.isValidStraightMove(fromRow, fromCol, toRow, toCol);
+
+                    case 'n': // Knight
+                        const rowDiff = Math.abs(toRow - fromRow);
+                        const colDiff = Math.abs(toCol - fromCol);
+                        return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+
+                    case 'b': // Bishop
+                        return this.isValidDiagonalMove(fromRow, fromCol, toRow, toCol);
+
+                    case 'q': // Queen
+                        return this.isValidStraightMove(fromRow, fromCol, toRow, toCol) ||
+                               this.isValidDiagonalMove(fromRow, fromCol, toRow, toCol);
+
+                    case 'k': // King
+                        return Math.abs(toRow - fromRow) <= 1 && Math.abs(toCol - fromCol) <= 1;
+                }
+                return false;
+            }
+
+            isValidStraightMove(fromRow, fromCol, toRow, toCol) {
+                if (fromRow !== toRow && fromCol !== toCol) return false;
+                
+                const rowDir = fromRow === toRow ? 0 : (toRow - fromRow) / Math.abs(toRow - fromRow);
+                const colDir = fromCol === toCol ? 0 : (toCol - fromCol) / Math.abs(toCol - fromCol);
+                
+                let currentRow = fromRow + rowDir;
+                let currentCol = fromCol + colDir;
+                
+                while (currentRow !== toRow || currentCol !== toCol) {
+                    if (this.gameState[currentRow][currentCol]) return false;
+                    currentRow += rowDir;
+                    currentCol += colDir;
+                }
+                
+                return true;
+            }
+
+            isValidDiagonalMove(fromRow, fromCol, toRow, toCol) {
+                if (Math.abs(toRow - fromRow) !== Math.abs(toCol - fromCol)) return false;
+                
+                const rowDir = (toRow - fromRow) / Math.abs(toRow - fromRow);
+                const colDir = (toCol - fromCol) / Math.abs(toCol - fromCol);
+                
+                let currentRow = fromRow + rowDir;
+                let currentCol = fromCol + colDir;
+                
+                while (currentRow !== toRow && currentCol !== toCol) {
+                    if (this.gameState[currentRow][currentCol]) return false;
+                    currentRow += rowDir;
+                    currentCol += colDir;
+                }
+                
+                return true;
+            }
+
+            makeMove(fromRow, fromCol, toRow, toCol) {
+                this.gameState[toRow][toCol] = this.gameState[fromRow][fromCol];
+                this.gameState[fromRow][fromCol] = '';
+                this.initializeBoard();
+            }
+
+            showValidMoves(row, col) {
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j < 8; j++) {
+                        if (this.isValidMove(row, col, i, j)) {
+                            const cell = this.board.children[i * 8 + j];
+                            cell.classList.add('valid-move');
+                        }
+                    }
+                }
+            }
+
+            clearHighlights() {
+                const cells = this.board.getElementsByClassName('cell');
+                for (let cell of cells) {
+                    cell.classList.remove('selected', 'valid-move');
+                }
+            }
+        }
+
+        // Initialize the game
+        new ChessGame();
+    </script>
+</body>
+</html
